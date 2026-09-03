@@ -101,6 +101,24 @@ spec:
           {{- if $val.defaultMode }}
           defaultMode: {{ $val.defaultMode }}
           {{- end }}
+          {{- if $val.items }}
+          items:
+{{ toYaml $val.items | indent 12 }}
+          {{- end }}
+      {{- end}}
+      {{- end}}
+      {{- range $collection := tuple (coalesce $component_values.configMounts .Values.configMounts) $component_values.extraConfigMounts }}
+      {{- range $key, $val := $collection }}
+      - name: {{ coalesce $val.volumeName $val.configMapName $val.configMapFullName }}
+        configMap:
+          name: {{ coalesce $val.configMapFullName (printf "%s-%s" $.Release.Name $val.configMapName) }}
+          {{- if $val.defaultMode }}
+          defaultMode: {{ $val.defaultMode }}
+          {{- end }}
+          {{- if $val.items }}
+          items:
+{{ toYaml $val.items | indent 12 }}
+          {{- end }}
       {{- end}}
       {{- end}}
       {{- range $key, $val := .Values.persistentVolumes }}
@@ -151,6 +169,15 @@ spec:
               {{- end }}
             {{- end}}
             {{- end}}
+            {{- range $collection := tuple (coalesce $component_values.configMounts .Values.configMounts) $component_values.extraConfigMounts }}
+            {{- range $key, $val := $collection }}
+            - name: {{ coalesce $val.volumeName $val.configMapName $val.configMapFullName }}
+              mountPath: {{ $val.mountPath }}
+              {{- if $val.subPath }}
+              subPath: "{{ $val.subPath }}"
+              {{- end }}
+            {{- end}}
+            {{- end}}
             {{- range $key, $val := .Values.persistentVolumes }}
             - name: {{ $key }}
               mountPath: {{ $val.mountPath }}
@@ -166,6 +193,10 @@ spec:
             - name: metrics
               containerPort: 8080
               protocol: TCP
+{{- with .Values.lifecycle }}
+          lifecycle:
+            {{- toYaml . | nindent 12 }}
+{{- end }}
           env:
             {{- range $key1, $val1 := .Values.optional_config }}
             - name: {{ $key1 | upper }}

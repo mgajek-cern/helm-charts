@@ -82,6 +82,22 @@ spec:
           {{- if $val.defaultMode }}
           defaultMode: {{ $val.defaultMode }}
           {{- end }}
+          {{- if $val.items }}
+          items:
+{{ toYaml $val.items | indent 12 }}
+          {{- end }}
+      {{- end}}
+      {{- range $key, $val := .Values.configMounts }}
+      - name: {{ coalesce $val.volumeName $val.configMapName $val.configMapFullName }}
+        configMap:
+          name: {{ coalesce $val.configMapFullName (printf "%s-%s" $.Release.Name $val.configMapName) }}
+          {{- if $val.defaultMode }}
+          defaultMode: {{ $val.defaultMode }}
+          {{- end }}
+          {{- if $val.items }}
+          items:
+{{ toYaml $val.items | indent 12 }}
+          {{- end }}
       {{- end}}
       {{- range $key, $val := .Values.persistentVolumes }}
       - name: {{ $key }}
@@ -211,6 +227,19 @@ spec:
             subPath: {{ $val.subPath }}
           {{-  end}}
           {{- end}}
+          {{- range $key, $val := .Values.configMounts }}
+          {{-  if $val.subPaths }}
+          {{-   range $val.subPaths }}
+          - name: {{ coalesce $val.volumeName $val.configMapName $val.configMapFullName }}
+            mountPath: {{ $val.mountPath }}{{ . }}
+            subPath: {{ . }}
+          {{-   end}}
+          {{-  else }}
+          - name: {{ coalesce $val.volumeName $val.configMapName $val.configMapFullName }}
+            mountPath: {{ $val.mountPath }}
+            subPath: {{ $val.subPath }}
+          {{-  end}}
+          {{- end}}
           {{- range $key, $val := .Values.persistentVolumes }}
           - name: {{ $key }}
             mountPath: {{ $val.mountPath }}
@@ -258,7 +287,7 @@ spec:
 {{- end }}
           readinessProbe:
             httpGet:
-              path: /ping/
+              path: /ping
 {{- if .Values.useSSL }}
               port: 444
               scheme: HTTPS
@@ -270,7 +299,7 @@ spec:
             timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
           livenessProbe:
             httpGet:
-              path: /ping/
+              path: /ping
 {{- if .Values.useSSL }}
               port: 444
               scheme: HTTPS
@@ -280,6 +309,10 @@ spec:
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+{{- with .Values.lifecycle }}
+          lifecycle:
+            {{- toYaml . | nindent 12 }}
+{{- end }}
           env:
             {{- range $key, $val := .Values.httpd_config }}
             - name: RUCIO_HTTPD_{{ $key | upper }}
